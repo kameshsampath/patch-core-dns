@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+   name: registry-aliases-sa
+   namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: registry-aliases-crb
+subjects:
+- kind: ServiceAccount
+  name: registry-aliases-sa
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-core-dns
+  namespace: kube-system
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      serviceAccountName: registry-aliases-sa
+      volumes:
+       - name: minikube
+         hostPath: 
+           path: /var/lib/minikube/binaries
+      containers:
+       - name: core-dns-patcher
+         image:  quay.io/rhdevelopers/core-dns-patcher
+         imagePullPolicy: IfNotPresent
+         volumeMounts:
+           - mountPath: /var/lib/minikube/binaries
+             name: minikube
+             readOnly: true
+      restartPolicy: Never
+  backoffLimit: 4

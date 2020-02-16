@@ -1,0 +1,11 @@
+apiVersion: skaffold/v2alpha3
+kind: Config
+metadata:
+  name: patch-core-dns
+build:
+  artifacts:
+  - image: quay.io/rhdevelopers/core-dns-patcher
+deploy:
+  kubectl:
+    manifests:
+    - test/job.yaml

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-dns-patcher
+spec:
+  selector:
+    matchLabels:
+      app: core-dns-patcher
+  template:
+    metadata:
+      labels:
+        app: core-dns-patcher
+    spec:
+     volumes:
+       - name: minikube
+         hostPath: 
+           path: /var/lib/minikube/binaries
+     initContainers:
+       - name: core-dns-patcher
+         image:  quay.io/rhdevelopers/core-dns-patcher
+         imagePullPolicy: IfNotPresent
+         command:
+           - /find-and-verify-kubectl.sh
+         volumeMounts:
+           - mountPath: /var/lib/minikube/binaries
+             name: minikube
+             readOnly: true
+     containers:
+        - name: pause-for-update
+          image: gcr.io/google_containers/pause-amd64:3.1
+                
