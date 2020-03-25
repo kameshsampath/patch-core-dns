@@ -70,7 +70,7 @@ IFS=
 if [ -n "$ALIASES_ENTRIES" ];
 then
    # Add the rename rewrites after string health
-   sed "/health/a\\
+   sed "/health/i\\
      $ALIASES_ENTRIES" < /tmp/coredns-alias-prepatch.yaml| tr '~' '\n' | tee /tmp/coredns-alias-patch.yaml > /dev/null
    yq w -i /tmp/coredns-alias-patch.yaml data.Corefile "$(cat /tmp/coredns-alias-patch.yaml)"
    # echo "Patch to be applied"
