@@ -8,4 +8,4 @@ set -o pipefail
 
 docker build -t quay.io/rhdevelopers/core-dns-patcher .
 
-docker tag quay.io/rhdevelopers/core-dns-patcher quay.io/rhdevelopers/core-dns-patcher:0.0.1
+docker tag quay.io/rhdevelopers/core-dns-patcher quay.io/rhdevelopers/core-dns-patcher:0.0.2
