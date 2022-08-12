@@ -2,11 +2,9 @@
 # A script that wil be used to patch the core dns aliases
 # e.g say i want dev.local to be mapped to default registry registry.kube-system.cluster.svc.local
 #
-set -eu
+set -euxo pipefail 
 
-set -o pipefail 
-
-shopt -s expand_aliases
+unset KUBECONFIG
 
 # check kubectl command
 kubectl version
@@ -58,9 +56,9 @@ then
   # Add the rename rewrites after string health
   sed "/health/i\\
     $ALIASES_ENTRIES" < /tmp/coredns-alias-prepatch.yaml | tr '~' '\n' | tee /tmp/coredns-alias-patch.yaml > /dev/null
-  JSON_PATCH=$(yq --null-input '(.data.Corefile = load("/tmp/coredns-alias-patch.yaml"))')
-  printf " Applying patch %s" "$JSON_PATCH"
-  kubectl patch cm coredns -n kube-system --patch "$JSON_PATCH"
+  JSON_PATCH=$(yq -o json --null-input '(.data.Corefile = load("/tmp/coredns-alias-patch.yaml"))')
+  printf " Applying patch %s" "${JSON_PATCH}"
+  kubectl patch cm coredns -n kube-system --patch "${JSON_PATCH}"
   kubectl rollout status -n kube-system deployment coredns --timeout=30s
 else
   echo "No Aliass entries found, skipping patch"
