@@ -4,7 +4,7 @@
 #
 set -euxo pipefail 
 
-# unset KUBECONFIG
+unset KUBECONFIG
 
 # check kubectl command
 kubectl version
