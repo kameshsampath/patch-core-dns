@@ -4,7 +4,7 @@
 #
 set -euxo pipefail 
 
-unset KUBECONFIG
+# unset KUBECONFIG
 
 # check kubectl command
 kubectl version
@@ -26,12 +26,12 @@ RW_RULE='rewrite name '
 IFS=
 
 # store the previous value for further processing 
-kubectl get cm coredns -n kube-system -oyaml | yq '.data.Corefile' -   | tee /tmp/coredns-alias-prepatch.yaml > /dev/null
+kubectl get cm coredns -n kube-system -oyaml | yq --unwrapScalar=false '.data.Corefile' -   | tee /tmp/coredns-alias-prepatch.yaml > /dev/null
 
 nStart=$(grep -n -m 1 "$REGISTRY_SVC"  /tmp/coredns-alias-prepatch.yaml | head -n1 | cut -d: -f1 || true )
 nEnd=$(grep -n "$REGISTRY_SVC" /tmp/coredns-alias-prepatch.yaml | tail -n1 | cut -d: -f1 || true )
 
-#echo "Pattern Start line: $nStart Ending line : $nEnd"
+echo "Pattern Start line: $nStart Ending line : $nEnd"
 
 # remove old entries 
 if [ -n "$nStart" ] && [ -n "$nEnd" ]; 
@@ -56,9 +56,9 @@ then
   # Add the rename rewrites after string health
   sed "/health/i\\
     $ALIASES_ENTRIES" < /tmp/coredns-alias-prepatch.yaml | tr '~' '\n' | tee /tmp/coredns-alias-patch.yaml > /dev/null
-  JSON_PATCH=$(yq -o json --null-input '(.data.Corefile = load("/tmp/coredns-alias-patch.yaml"))')
-  printf " Applying patch %s" "${JSON_PATCH}"
-  kubectl patch cm coredns -n kube-system --patch "${JSON_PATCH}"
+  _PATCH=$(yq --null-input --unwrapScalar '(.data.Corefile = load("/tmp/coredns-alias-patch.yaml"))')
+  printf " Applying patch %s" "${_PATCH}"
+  kubectl patch cm coredns -n kube-system --patch "${_PATCH}"
   kubectl rollout status -n kube-system deployment coredns --timeout=30s
 else
   echo "No Aliass entries found, skipping patch"
