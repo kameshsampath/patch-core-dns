@@ -1,8 +1,8 @@
 # Core DNS Patcher Job
 
-The minikube registry helper addon requires the Kubernetes coreDNS to be patched after the registry aliases daemonset has completed updating the `/etc/hosts` of the minikube node.
+A simple utility to patch CoreDNS for aliases/rewrites
 
-Refer to htps://github.com/minikube-helpers/registry/README.md[Registry Helper]
+> **IMPORTANT**: Only for development purpose
 
 ## Open Issues
 

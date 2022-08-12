@@ -6,9 +6,15 @@ set -eu
 
 set -o pipefail 
 
-docker build -t quay.io/rhdevelopers/core-dns-patcher .
+DRONE_TAG=${DRONE_TAG:-$(svu patch)}
+DEST_IMAGE=${DEST_IMAGE:-kameshsampath/patch-core-dns}
 
-docker tag quay.io/rhdevelopers/core-dns-patcher quay.io/rhdevelopers/core-dns-patcher:0.0.2
+docker buildx inspect "$BUILDER" || \
+   docker buildx create --name="$BUILDER" \
+   --driver=docker-container --driver-opt=network=host
 
-docker push quay.io/rhdevelopers/core-dns-patcher
-docker push quay.io/rhdevelopers/core-dns-patcher:0.0.2
+docker buildx build --push --builder="$BUILDER" \
+        --platform=linux/amd64,linux/arm64 --build-arg \ --tag="$DEST_IMAGE:$DRONE_TAG" \
+        --tag="$DEST_IMAGE:latest"  .
+
+# drone exec --secret-file="${SECRET_FILE}" --env-file="${ENV_FILE}" --trusted .drone.local.yml

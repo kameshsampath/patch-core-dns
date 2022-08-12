@@ -7,3 +7,4 @@ COPY patch-coredns.sh /patch-coredns.sh
 RUN chmod +x /patch-coredns.sh
 
 CMD [ "/patch-coredns.sh" ]
+

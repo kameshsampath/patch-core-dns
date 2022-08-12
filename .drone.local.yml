@@ -1,0 +1,36 @@
+---
+kind: pipeline
+type: docker
+name: "Release Docker Images(amd64,arm64)"
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: buildx
+    image: docker:20.10.17-cli-alpine3.16
+    commands:
+      - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+      - |
+        docker buildx inspect $BUILDER || 
+        docker buildx create --name=$BUILDER 
+        --driver=docker-container --driver-opt=network=host
+      - |
+        docker buildx build --push --builder=$BUILDER \
+        --platform=linux/amd64,linux/arm64 --build-arg \ --tag=$DEST_IMAGE:$DRONE_TAG --tag=$DEST_IMAGE:latest  .
+    environment:
+      BUILDER: buildx-multi-arch
+      DEST_IMAGE:
+        from_secret: destination_image
+      DOCKER_USER:
+        from_secret: image_registry_username
+      DOCKER_PASSWORD:
+        from_secret: image_registry_password
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock

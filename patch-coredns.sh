@@ -8,41 +8,27 @@ set -o pipefail
 
 shopt -s expand_aliases
 
-# Find the kubectl set as part of minikube start 
-KUBECTL_CMD=$(find /var/lib/minikube/binaries -name kubectl)
-echo "Using $KUBECTL_CMD"
-alias kubectl="$KUBECTL_CMD"
-
 # check kubectl command
 kubectl version
-
-# Make sure registry aliases daemonset is running
-
-sleep 5; 
-while (echo &&\
-   kubectl get pods -n kube-system --selector=app=registry-aliases-hosts-update \
-  | grep -v -E "(Running|Completed|STATUS)"); 
-do 
-   sleep 5; 
-done
 
 # clean up old files if they exist
 rm -f /tmp/coredns-alias-patch.yaml
 rm -f /tmp/coredns-alias-prepatch.yaml
 
-REGISTRY_ALIASES=$(kubectl get cm registry-aliases -n kube-system -oyaml | yq r - data.registryAliases)
-REGISTRY_SVC=$(kubectl get cm registry-aliases -n kube-system -oyaml | yq r - data.registrySvc) 
+OLDIFS=$IFS
+
+IFS=', ' read -r -a ARR_REGISTRY_ALIASES <<< "${REGISTRY_ALIASES}"
+
 ALIASES_ENTRIES=""
 NL_DELIMITER='~'
 SPACES='  '
 RW_RULE='rewrite name '
 
-OLDIFS=$IFS
 
 IFS=
 
 # store the previous value for further processing 
-kubectl get cm coredns -n kube-system -oyaml | yq r - data.Corefile  | tee /tmp/coredns-alias-prepatch.yaml > /dev/null
+kubectl get cm coredns -n kube-system -oyaml | yq '.data.Corefile' -   | tee /tmp/coredns-alias-prepatch.yaml > /dev/null
 
 nStart=$(grep -n -m 1 "$REGISTRY_SVC"  /tmp/coredns-alias-prepatch.yaml | head -n1 | cut -d: -f1 || true )
 nEnd=$(grep -n "$REGISTRY_SVC" /tmp/coredns-alias-prepatch.yaml | tail -n1 | cut -d: -f1 || true )
@@ -57,7 +43,7 @@ fi
 
 IFS=$OLDIFS
 
-for H in $REGISTRY_ALIASES; 
+for H in "${ARR_REGISTRY_ALIASES[@]}"; 
 do    
     [ -n  "$ALIASES_ENTRIES" ] && ALIASES_ENTRIES="$ALIASES_ENTRIES$NL_DELIMITER"
     ALIASES_ENTRIES="$ALIASES_ENTRIES$RW_RULE$H$SPACES$REGISTRY_SVC"
@@ -69,13 +55,13 @@ IFS=
 
 if [ -n "$ALIASES_ENTRIES" ];
 then
-   # Add the rename rewrites after string health
-   sed "/health/i\\
-     $ALIASES_ENTRIES" < /tmp/coredns-alias-prepatch.yaml| tr '~' '\n' | tee /tmp/coredns-alias-patch.yaml > /dev/null
-   yq w -i /tmp/coredns-alias-patch.yaml data.Corefile "$(cat /tmp/coredns-alias-patch.yaml)"
-   # echo "Patch to be applied"
-   #cat  /tmp/coredns-alias-patch.yaml
-   kubectl patch cm coredns -n kube-system --patch "$(cat /tmp/coredns-alias-patch.yaml)"
+  # Add the rename rewrites after string health
+  sed "/health/i\\
+    $ALIASES_ENTRIES" < /tmp/coredns-alias-prepatch.yaml | tr '~' '\n' | tee /tmp/coredns-alias-patch.yaml > /dev/null
+  JSON_PATCH=$(yq --null-input '(.data.Corefile = load("/tmp/coredns-alias-patch.yaml"))')
+  printf " Applying patch %s" "$JSON_PATCH"
+  kubectl patch cm coredns -n kube-system --patch "$JSON_PATCH"
+  kubectl rollout status -n kube-system deployment coredns --timeout=30s
 else
   echo "No Aliass entries found, skipping patch"
 fi 
